@@ -1,3 +1,6 @@
+## ECE Operating System
+Developed a linux-based operating system integrating system calls interface, device drivers, file system support for tasks, along with multiple-terminal support and round-robin scheduling policy.
+
 ACADEMIC INTEGRITY
 -----
 Please review the University of Illinois Student Code before starting,
