@@ -1,0 +1,189 @@
+The bugs we encountered while coding for MP3 Checkpoint 1
+
+Date: 14/10/2023
+BUG: When we populated the IDT, we set the attributes for all the exceptions and the interrupts in the for loop, which went until 0x2F which initialized all the exception and the interrupts
+Solution: When testing system call in the launch tests, it was never reaching the handler, however after debugging we realized that the vector number for a system call’s properties were not set as 0x80 vector number was outside of the range of 2F so we manually assigned the attributes and then the system call was being registered.
+Time Taken to fix: 45 minutes
+
+Date: 14/10/2023
+BUG: After implementing system call handler, our handler correctly executed and printed the desired string, however it not return to the original program as the system calls/interrupts should be able to return to the original program after being serviced unlike exceptions.
+Solution: We narrowed our error down to the system call linkage, after debugging we figured that we were pushing the tax as an argument, however we were never decrementing our stack pointer after the call was made, which messed up our stack, making our program never able to return to the original program
+Time Taken to fix: 50 minutes
+
+Date: 15/10/2023
+BUG: When testing for our keyboard initialization and handler, the keyboard correctly printed a character we typed on the screen, however it used to never reach back to the original program after the interrupt was being serviced, thus never allowing the keyboard to print anything after the first character.
+Solution: We initially thought our interrupt linkage to be wrong, however we realized that our send EOI was wrong. As we had the port and value arguments for the eoi switched, the eoi was never being registered 
+Time Taken to fix: 1 hr 20 minutes 
+
+Date: 15/10/2023
+BUG: After implementing our paging, the OS was stuck in a boot loop.
+Solution: The ordering of the struct page directory and page table structs were reversed, as it was filling the struct from the MSB to LSB, instead we had to fill the struct from LSB to MSB which fixed our bug.
+Time Taken to fix: 30 minutes 
+
+Date: 15/10/2023
+BUG: After the keyboard, was configured, we implemented our etc handler, which seemed to be only calling once the program started executing, no alternate screening of characters.
+Solution: As our keyboard was working, we were certain that the linkage was correct, however our send EOI was wrong again as it was not correctly configured for the slave pic. We weren’t sending the irq 2 whenever a slave pic raised an interrupt. As we only raised interrupt for our slave pic and not its corresponding connection i.e IRQ 2 on the master pic, the calling to the RTC handler didn’t happen after the first time.
+Time Taken to fix: 45 minutes
+
+
+The bugs we encountered for MP3 Checkpoint 2
+ 
+Date: 20/10/2023
+BUG: Our shift and control flags for the keyboard worked fine, however when capsLock was on, capital letters were not printed. 
+Solution: After debugging through gdb, we realized that we had manipulated the CapsLock flag, just like the shift and control flags, as to keep pressing the button to make the flag 1. We changed the setting of the flag to always invert the capsLock flag value, when capsLock is pressed
+Time Taken to fix: 37 minutes
+ 
+Date: 21/10/2023
+BUG: When implementing TAB key, we mapped the value of the tab button to ‘\b’ which was still printing the tab character on the screen when tab was pressed 
+Solution: As the tab key was always printed on the screen, we configured the mapping of the tab key to print a number of spaces, 4 to be specific. This was implemented in the lib.c file in the putc function.
+Time Taken to fix: 1 hour
+ 
+Date: 21/10/2023
+BUG: When testing reading from the file, our implementation displayed the correct output i.e. the data stored in the file, however it still printed gibberish on the screen after the data of file.
+Solution: By printing the values of the bufFER we figured that the bufFER was declared at the start but not initialized to hold NULL values, so we iterated through the buffer in the start and stored NULL values, which ensured that random gibberish characters were not printed on the screen
+Time Taken to fix: 1 hour 25 minutes
+
+Date: 22/10/2023
+BUG: When we implemented read entry by name, we wrote the test case which would echo the name of the file on the screen, however it printed gibberish.
+Solution: After debugging through GDB we realized that, as we were calling read_dentry_by_index in read_dentry_by_name, we were passing the wrong argument. Instead of passing the dentry pointer we were passing the reference of that pointer, so we removed the ‘&’ sign from the entry argument.
+Time Taken to fix: 45 minutes
+ 
+Date: 22/10/2023
+BUG: In filesystem, the directory read function, did not correctly list the names of the files present in the directory.
+Solution: When we displayed the filenames in the string copy function, it correctly displayed the names of files in each iteration, however, the buffer did not show the correct values. The fix to this was to store the file names at the correct offset in the buffer i.e buf[32*i] instead of just buf[I], as each file name can have 32 characters, 32*i included the padding in the buffer.
+Time Taken to fix: 50 minutes
+
+Date: 22/10/2023
+BUG: The RTC would not set the frequency correctly. When we would write to the RTC register, the frequency would sometimes change but not to the desired one.
+Solution: We were sending the frequency in the wrong format as well as performing the power-of-2 check incorrectly. We realized that there is a specific mapping of control register bits to frequencies defined in the new data sheet.
+Time Taken to fix: 55 minutes
+
+Date: 22/10/2023
+BUG: Our RTC read function wasn't working properly. The time between consecutive interrupts varied although it wasn't supposed to.
+Solution: We had accidentally placed the raising of the rtc_interrupt_occurred flag inside a critical section which had prevented the rtc interrupt from occurring right after raising the flag and before the end of the critical section.
+Time Taken to fix: 25 minutes
+
+
+The bugs we encountered for MP3 Checkpoint 3
+
+Date: 01/11/2023 
+
+BUG: For our execute, we first tested our sys call linkage through tests.c by calling int x080, however the value of tax for a successful operation in sys call linkage was not 0 and was some random value.
+
+Solution: After debugging we figured that as we were doing pushal and popal at the start and end of our sys call linkage we were losing the tax return value from the call function, which we solved by using a global variable to preserve the eax value and move it in after popal.
+
+Time Taken to fix: 50 minutes
+
+ 
+
+Date: 01/11/2023
+
+BUG: We were page faulting in the end of execute, in the inline assembly where we push the iret context. 
+
+Solution: After acquiring help from a TA, we figured we did not have to manually set the flags IF flag to 1 b ORing it with 0x200, instead we just had to perform pushful to push flags.
+
+Time Taken to fix: 1 hour
+
+ 
+
+Date: 02/11/2023
+
+BUG: We were receiving page fault exception when we directly execute LS, from kernel.c and not running shell.
+
+Solution: Through gdb we figured, that for the directory read we were storing the name of the files in buf[32*I]but for our ls file, the buf size was declared to be 33, so it was accessing an inaccessible memory through the buffer, so we removed the for loop there and used file_pos.
+
+Time Taken to fix: 30 minutes
+
+ 
+
+Date: 02/11/2023
+
+BUG: Once we executed LS inside shell, our halt gave us a page fault exception. It gave us a page fault exception in the inline assembly at the end of the function when we were storing parent exp in the bp register.
+
+Solution: Instead of an attribute in a struct, for ebp, we stored the value of the bp in a global variable in execute through inline assembly which prevented our page fault exception and we were able to go back to sys_call_handler linkage as expected.
+
+Time Taken to fix: 47 minutes
+
+ 
+
+Date: 02/11/2023
+
+BUG: After halting ls, our program went back to the system call linkage, but after iret from there it was not reaching back to shell and giving page fault exception.
+
+Solution: We were not flushing TLB in halt as it was a part for the restoring parent paging. We made an extern function in paging called extern flush_tlb which we called in halt, and our halt worked perfectly then.
+
+Time Taken to fix: 3 hours
+
+
+These are the following bugs we encountered in checkpoint 4 
+
+Date: 11/11/2023
+
+BUG: While copying the command in the file_name local variable in execute we always had random gibberish characters at the end of the buffer
+Solution: we looked at strcpy in lib.c and noticed that while copying strings we should terminate the string by appending a null character which we did and it worked for us.
+Time Taken to fix: 1 hr 30 minutes 
+
+Date: 11/11/2023
+
+BUG: After our initial implementation of get args, our cat frame.txt was working  but going in an infinite loop, it kept printing the file contents in a loop.
+Solution: In our read_file function in filesystem.c we were not updating the file_pos, which never caused the while loop in the cat.c file to terminate.
+Time Taken to fix: 55 minutes
+
+
+Date: 12/11/2023
+
+BUG: After we were able to implement multiple shells, our exit for the built-on shell was not working as after typing exit, it would bootloop.
+Solution: The solution for this bug was to perform read_data before forming the user-eip in the execute and also replacing memcpy with the read_data in the execute function. 
+Time Taken to fix: 45 minutes
+
+
+
+These are the following bugs we encountered in checkpoint 5 
+
+Date: 30/11/2023
+
+BUG:  Our initial design implementation, booted up a shell in kernel.c and switched to all terminals and booted all the shells. However due to the base_shell logic we were never able to exit the first shell, which would then ultimately not terminal switch.
+
+Solution: Our fix was to change our implementation to only boot up shells dynamically once you switch to a terminal which has a curr_pid of -1 (indicating no current program/shell is running on this terminal)
+
+Time Taken to fix: 3 hours 
+
+
+
+Date: 30/12/2023
+
+BUG: We encountered a page fault exception when booting up the first shell on the first terminal, instantly because our running_terminal (program being run in a terminal scheduled ) and the terminal_id (the current displayed terminal) was not the same in execute.
+
+Solution: We included a while loop in the execute, which spun until the running _terminal and the terminal_id became same, as scheduler would change the running_terminal.
+
+Time Taken to fix: 4 hours 
+
+
+
+Date: 1/12/2023
+
+BUG: Since we were ignoring scheduling In the start of the booting up of the base shell in the second/third terminal, we were always stuck in the while loop of the execute function, waiting for the running terminal to be equal to terminal id.
+
+Solution: To avoid this on the booting up of the first shell of the terminals(when we ignored scheduling), we included a termina_switch_base flag, which when set meant that the current program being executed is a base shell of a terminal and we do not need to use the while loop as scheduling is currently being skipped.
+
+Time Taken to fix: 75 minutes
+
+
+
+Date: 1/12/2023
+
+BUG: For the base shell on the first terminal, after ignoring pit handler, the first shell we launched, could record any typing characters even though the interrupt flag was correctly set.
+
+Solution: Since we ignored scheduling for the base shell of the first terminal, we did not do send eoi before returning so all the keyboard interrupts were being masked.
+
+Time Taken to fix: 1 hour 
+
+
+
+Date: 2/12/2023
+
+BUG: When we implemented terminal switching we tried, printing characters on screen, however it just printed out spaces after terminal switching.
+
+Solution: To fix that we basically implemented a memcpy to copy the content of the video page to the video memory if our running terminal (the terminal program running a program) is the same as the terminal_id (the id of the current terminal being displayed.)
+
+Time Taken to fix:  2 hours 
